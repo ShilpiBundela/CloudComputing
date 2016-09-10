@@ -1,0 +1,228 @@
+Homework 10 
+Experiment of the fault tolerance
+Goal
+In this experiment, we are going to experiment application fault tolerance. 
+Fault tolerance is a system’s ability to deal with malfunctions. 
+Fault tolerance is very important for a system because it is expected to be always functional to its users. 
+In designing a fault-tolerant system, we must realize that 100% fault tolerance can never be achieved. 
+Moreover, the closer we try to get to 100%, the more costly our system will be.
+
+
+Background:
+We will have 5 VMs:
+3 serve as Application instance(172.31.30.139, 172.31.26.143, 172.31.25.64)
+1 load balancer (172.31.21.242)
+1 client (172.31.18.156)
+
+Experiment Prepareation
+Application instance
+I followed the steps and instructions in https://github.com/CSYE6225/msgsrv and https://github.com/CSYE6225/loader-engima
+to enable PHP on these servers, and then load the services.
+before the experiment start, I also check the load is valid so no system error are generated.
+scripts are shown as below:
+ubuntu@ip-172-31-30-139:/var/www/html$ cat /var/log/apache2/error.log
+[Tue Mar 29 06:56:29.876490 2016] [mpm_prefork:notice] [pid 12794] AH00163: Apache/2.4.7 (Ubuntu) PHP/5.5.9-1ubuntu4.14 configured -- resuming normal operations
+[Tue Mar 29 06:56:29.876502 2016] [core:notice] [pid 12794] AH00094: Command line: '/usr/sbin/apache2'
+[Tue Mar 29 14:13:17.474528 2016] [core:error] [pid 15874] [client 52.37.192.157:58748] AH00135: Invalid method in request \xe2\xa5\xcd5l\xdcX\xd3\xa2\xcdOt\x1dZ2\xcay\xaf\xb9\xf1\xb6]\x17^\xeb\x0fZ/\xe7xu\xeeK\x9bk\xc4 / HTTP/1.1
+[Tue Mar 29 20:06:54.761460 2016] [mpm_prefork:notice] [pid 12794] AH00169: caught SIGTERM, shutting down
+[Tue Mar 29 20:06:55.808997 2016] [mpm_prefork:notice] [pid 17224] AH00163: Apache/2.4.7 (Ubuntu) PHP/5.5.9-1ubuntu4.14 configured -- resuming normal operations
+[Tue Mar 29 20:06:55.809037 2016] [core:notice] [pid 17224] AH00094: Command line: '/usr/sbin/apache2'
+
+we can see from above that there are no system errors.
+
+Load Balancer
+for test of 2 server, use the two in homework8, write the right ips addresses in 000-default-2-instance.conf
+for test of 3 server, launch a new VM with the same setting as the existing two instances. place the 3 ips in 000-default-3-instance.conf
+
+Client
+simulate a moderate synthetic server load. here I use a while loop to call the servers continuously. 
+uese curl http://52.37.192.157/load.php, with load balancer's public ip, because load balancer will allocate tasts to each related server
+see Client.sh
+
+Experiment Procedures
+
+Test fault tolerance for 2 Application instances
+1. Client: execute Client.sh in client VM 
+2. Server: 
+execute the vmstat command and observe the reosurce utilization, increase the number of clients inorder to reach server resourse 
+utiliztion(60%-70%) of server 1 and server 2.
+
+ubuntu@ip-172-31-30-139:/var/www/html$ vmstat 3
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 2  0      0 303140  49236 558144    0    0     3     6   36   85  0  0 100  0  0
+ 0  0      0 303056  49236 558148    0    0     0     4  157  151 33  6 61  0  0
+ 1  0      0 276348  49244 558148    0    0     0     4  155  151 33  5 62  0  0
+ 0  0      0 303020  49252 558148    0    0     0     4  156  150 34  6 60  0  0
+ 1  0      0 276352  49252 558152    0    0     0     0  225  191 53 10 37  0  1
+ 1  0      0 276468  49260 558156    0    0     0     4  270  223 65 12 23  0  0
+ 0  0      0 302944  49260 558156    0    0     0     0  270  223 66 11 23  0  0
+ 1  0      0 279728  49268 558160    0    0     0     4  273  229 65 12 23  0  0
+ 1  0      0 298356  49276 558164    0    0     0     4  272  222 67 10 22  0  0
+ 1  0      0 276012  49276 558168    0    0     0     0  269  222 67 11 23  0  0
+ 1  0      0 275948  49284 558168    0    0     0     4  272  224 65 12 22  0  0
+ 0  0      0 302540  49284 558172    0    0     0    11  272  221 67 10 23  0  0
+ 0  0      0 302584  49292 558176    0    0     0     8  265  222 67 10 23  0  0
+ 0  0      0 302584  49300 558180    0    0     0     4  271  224 66 12 23  0  0
+ 
+ According to the data above, we know now the server is in its optimal resource utiliation.
+ restart server 1, observe the vmstat server 2, we can see that the cpu utilization is 
+ 
+ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 3  0      0 273376  45460 570312    0    0     4     5   38   88  1  0 99  0  0
+ 1  0      0 269596  45468 570316    0    0     0    11  278  231 70 10 20  0  0
+ 0  0      0 296068  45468 570320    0    0     0     0  280  224 69 10 21  0  0
+ 1  0      0 269532  45476 570320    0    0     0    12  276  226 70 11 19  0  0
+ 0  0      0 296132  45484 570324    0    0     0     8  279  223 71 10 19  0  0
+ 1  0      0 275112  45484 570328    0    0     0    11  285  223 70 13 17  0  0
+ 1  0      0 269420  45492 570332    0    0     0     4  281  225 71 11 17  0  0
+ 1  0      0 269476  45492 570332    0    0     0     0  278  211 71 10 16  0  2
+ 1  0      0 272508  45500 570336    0    0     0     4  279  219 71 11 18  0  0
+ 1  0      0 269480  45508 570340    0    0     0     4  284  226 74 10 16  0  0
+ 1  0      0 269408  45508 570344    0    0     0     0  281  220 72 10 18  0  0
+ 0  0      0 296068  45516 570344    0    0     0     4  283  220 72 10 18  0  0
+ 2  0      0 242224  45516 570348    0    0     0     0  302  387 81 10  8  0  0
+ 2  0      0 242200  45524 570352    0    0     0     4  285  396 80 10 10  0  0
+ 0  0      0 296008  45532 570352    0    0     0     4  292  400 81  9 10  0  0
+ 2  0      0 242104  45532 570356    0    0     0    13  292  409 81 10 10  0  0
+ 1  0      0 268888  45540 570360    0    0     0     8  295  405 82  8 10  0  0
+ 0  0      0 296000  45540 570364    0    0     0     0  289  400 79 11 10  0  0
+ 1  0      0 296008  45548 570364    0    0     0     4  299  402 80 11 10  0  0
+ 2  0      0 242200  45556 570360    0    0     0     4  298  410 79 11 10  0  0
+ 2  0      0 258620  45556 570372    0    0     0     0  287  397 82  8 10  0  0
+ 2  0      0 253204  45564 570372    0    0     0     4  295  405 80 10 10  0  0
+ 
+ now we use server 2'saccess log to measure the request per seconds or minutes.
+ after filtering unrelated data, we get:
+ 
+ ubuntu@ip-172-31-26-143:/var/www/html$ grep load.php /var/log/apache2/access.log|awk '{print $10,$4}' |sed 's/\[//g' | awk -F\: '{print $1"_"$2"_"$3}' | awk '{arr[$2]+=$1}END{for(i in arr) print i,arr[i]/60}'
+29/Mar/2016_20_42 540.017
+29/Mar/2016_20_43 474.65
+29/Mar/2016_20_44 706.05
+29/Mar/2016_20_49 1012.016 (server2 stop)
+29/Mar/2016_20_50 1023.817
+29/Mar/2016_20_51 1204.7
+29/Mar/2016_20_52 769.02   (server2 restart)
+29/Mar/2016_20_53 521.067
+
+
+we can see from the data above, the number of request per minute basically go up to a peek and then go down. 
+This is because when we restart one server, it will stop working for a while, the load balancer will assign more request to another server.
+So, for the another server(no the restart one),the cpu utilization will go up, the number of request/min will increase. 
+Once the server 1 resumes, it will start working again, thus cpu utilization of server 2 and number of request/min will go back to original.
+
+
+Test fault tolerance for 3 Application instances
+modify the load balancer's setting, add another VM to serve request.
+1. Client: execute Client.sh in client VM 
+2. Server: 
+execute the vmstat command and observe the reosurce utilization, increase the number of clients in order to reach server resourse 
+utiliztion(60%-70%) of server1 and server2 and server3.
+
+now we will first shut down server 1, and then server 2, then open server 1 and server 2, observe the situation in server 3
+
+first, we stop server1, observe server3
+
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 2  0      0 268308  46284 570664    0    0     0     0  248  206 60 10 30  0  0
+ 1  0      0 268284  46292 570668    0    0     0     4  266  218 69  9 22  0  0
+ 0  0      0 294784  46292 570668    0    0     0     0  277  212 71  9 19  0  1
+ 1  0      0 268160  46300 570672    0    0     0     4  250  221 63  9 15  0 12
+ 1  0      0 268160  46308 570668    0    0     0     4  277  214 71 11 18  0  0
+ 1  0      0 268124  46308 570680    0    0     0     9  277  218 72  9 19  0  0
+ 1  0      0 268124  46316 570680    0    0     0    12  276  219 72  9 18  0  0
+ 1  0      0 268124  46316 570684    0    0     0     0  278  213 72 10 18  0  0
+ 1  0      0 268124  46324 570688    0    0     0     4  275  224 67 11 23  0  0
+ 1  0      0 268104  46332 570680    0    0     0     4  260  217 66  9 26  0  0
+ 0  0      0 294684  46332 570692    0    0     0     0  262  214 65 11 24  0  0
+ 0  0      0 294692  46340 570696    0    0     0     4  263  216 66 11 23  0  0
+ 1  0      0 268108  46340 570700    0    0     0     0  261  215 65 11 24  0  0
+ 1  0      0 268104  46348 570700    0    0     0     4  267  217 66 10 23  0  0
+ 1  0      0 281332  46356 570696    0    0     0     4  270  215 66 11 24  0  0
+ 1  0      0 268132  46356 570708    0    0     0     0  269  222 68 10 23  0  0
+ 1  0      0 268192  46364 570708    0    0     0    16  270  215 68 10 22  0  0
+ 1  0      0 268192  46364 570712    0    0     0     0  270  216 68 10 22  0  0
+ 1  0      0 268200  46372 570716    0    0     0     8  265  214 66 11 23  0  0
+ 1  0      0 268200  46372 570716    0    0     0     0  266  217 67 10 23  0  0
+ 2  0      0 268068  46380 570720    0    0     0     4  258  217 66  9 25  0  0
+ 0  0      0 294692  46388 570716    0    0     0     4  259  214 66  9 24  0  0
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 1  0      0 268012  46388 570728    0    0     0     0  275  221 67 10 21  0  2
+ 1  0      0 283964  46396 570728    0    0     0     4  257  213 64 10 26  0  0
+ 1  0      0 267964  46396 570732    0    0     0     0  269  214 68  9 23  0  0
+ 1  0      0 267952  46404 570736    0    0     0     4  268  214 68  9 23  0  0
+ 1  0      0 268076  46412 570728    0    0     0    19  276  246 70 10 20  0  0
+ 1  0      0 268124  46412 570740    0    0     0     0  274  223 66 12 22  0  0
+ 1  0      0 268016  46420 570744    0    0     0     8  262  219 63 10 27  0  0
+ 1  0      0 268012  46420 570744    0    0     0     0  266  218 64 10 26  0  0
+ 1  0      0 268012  46428 570748    0    0     0     4  270  220 65 11 24  0  0
+ 1  0      0 267980  46436 570744    0    0     0     4  260  217 64 10 26  0  0
+ 1  0      0 268000  46436 570756    0    0     0     0  263  217 65 10 25  0  0
+ 0  0      0 294600  46444 570756    0    0     0     4  284  228 69 11 20  0  0
+ 0  0      0 294600  46444 570760    0    0     0     0  280  229 69 11 20  0  0
+ 1  0      0 267944  46452 570764    0    0     0     4  283  236 69 12 20  0  0
+ 1  0      0 267888  46460 570760    0    0     0     4  282  227 71 11 18  0  0
+ 1  0      0 267944  46460 570768    0    0     0     0  279  223 70 11 19  0  0
+ 2  0      0 267844  46468 570772    0    0     0    21  286  231 71 12 17  0  0
+ 0  0      0 294584  46468 570776    0    0     0     0  281  227 68 12 19  0  0
+ 3  0      0 215056  46476 570780    0    0     0     4  296  279 73 12 15  0  0
+ 
+ then stop server2, observe server3
+ 
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 4  0      0 212804  46492 570792    0    0     0     0  319  418 90  9  1  0  0
+ 3  0      0 212684  46500 570792    0    0     0     4  314  416 90  9  2  0  0
+ 3  0      0 238152  46508 570788    0    0     0     4  316  417 89 10  2  0  0
+ 3  0      0 222548  46508 570800    0    0     0     0  308  414 89  9  3  0  0
+ 3  0      0 212724  46516 570792    0    0     0    19  319  418 88 11  1  0  0
+ 3  0      0 212684  46516 570804    0    0     0     0  316  414 88 10  2  0  0
+ 2  0      0 266428  46524 570808    0    0     0     8  313  411 89  9  1  0  0
+ 3  0      0 212688  46524 570812    0    0     0     0  301  408 84 10  6  0  0
+ 1  0      0 272248  46532 570812    0    0     0     4  302  407 87  9  5  0  0
+ 3  0      0 212680  46540 570808    0    0     0     4  313  416 88 10  2  0  0
+ 3  0      0 212684  46540 570820    0    0     0     0  317  414 89 10  1  0  0
+ 3  0      0 212592  46548 570820    0    0     0     4  301  414 85 10  6  0  0
+ 3  0      0 212564  46548 570824    0    0     0     0  316  414 88 10  2  0  0
+ 3  0      0 212188  46556 570828    0    0     0     4  311  416 86 10  4  0  0
+ 3  0      0 212312  46556 570832    0    0     0     0  313  420 88  9  3  0  0
+ 3  0      0 211784  46564 570832    0    0     0     4  322  425 87 11  1  0  0
+ 3  0      0 211784  46572 570828    0    0     0    21  307  417 87 10  4  0  0
+
+observe the filtered access.log
+
+
+29/Mar/2016_21_07 209.733
+29/Mar/2016_21_08 231.340
+29/Mar/2016_21_09 638.383   (server1 stop)
+29/Mar/2016_21_10 752.9667
+29/Mar/2016_21_11 834.9543
+29/Mar/2016_21_12 985.529   (server2 stop)
+29/Mar/2016_21_13 1032.446  
+29/Mar/2016_21_14 752.9667  (server2 restart)
+29/Mar/2016_21_07 329.823   (server1 restart)
+29/Mar/2016_21_07 409.7302
+
+
+We can see from the data above, as server1 stop, the number of requests/min increases from 231 to 638, which means server3 share some work
+as server1 stop working. When we stop server2, the number of requests/min go up tp 1032, that can explain server3 affort all the works.
+when we try to resume server1 and server2, then we can see all the traffic back to normal.
+
+Conclusion
+The use of load balancer to optimally assigning works to multiple servers can effectively improve fault tolerance of a system. 
+And the more servers for a service, the higher possibility to deal with unexpected system interruptions.
+
+
+ 
+ 
+ 
+
+
+
+
+
+
+
